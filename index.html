@@ -3,91 +3,358 @@
 <head>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YouTube Mini App</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000);
-            min-height: 100vh; padding: 20px;
+            background: var(--tg-theme-bg-color, #1a1a2e);
+            color: var(--tg-theme-text-color, #eee);
+            min-height: 100vh;
+            padding: 16px;
         }
-        h1 { text-align: center; margin: 20px 0; color: var(--tg-theme-accent-text-color, #0088cc); }
-        #search { 
-            width: 100%; padding: 15px; font-size: 16px; border: 2px solid var(--tg-theme-hint-color, #c7c7c7);
-            border-radius: 12px; background: var(--tg-theme-secondary-bg-color, #f8f8f8);
+        .header {
+            text-align: center;
             margin-bottom: 20px;
         }
-        #results { display: flex; flex-wrap: wrap; gap: 15px; }
-        .video { 
-            width: 160px; cursor: pointer; border-radius: 12px; overflow: hidden; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.2s;
+        h1 {
+            color: var(--tg-theme-accent-text-color, #ff6b6b);
+            font-size: 24px;
+            margin-bottom: 8px;
         }
-        .video:hover { transform: scale(1.05); }
-        .video img { width: 100%; height: 90px; object-fit: cover; }
-        .video-title { padding: 10px; font-size: 14px; line-height: 1.3; }
-        #player { width: 100%; height: 50vh; border: none; border-radius: 12px; display: none; }
-        .back-btn { 
-            position: fixed; top: 20px; left: 20px; background: var(--tg-theme-button-color, #0088cc);
-            color: white; border: none; padding: 12px 20px; border-radius: 20px; cursor: pointer;
-            font-weight: 500;
+        .subtitle {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        #search-container {
+            margin-bottom: 20px;
+        }
+        #search {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            border: 2px solid var(--tg-theme-hint-color, #333);
+            border-radius: 12px;
+            background: var(--tg-theme-secondary-bg-color, #16213e);
+            color: var(--tg-theme-text-color, #eee);
+            transition: border-color 0.3s;
+        }
+        #search:focus {
+            outline: none;
+            border-color: var(--tg-theme-button-color, #ff6b6b);
+        }
+        #search::placeholder {
+            color: var(--tg-theme-hint-color, #666);
+        }
+        .search-btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            background: var(--tg-theme-button-color, #ff6b6b);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .search-btn:hover {
+            opacity: 0.9;
+        }
+        .search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #results {
+            display: none;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+        .video {
+            width: 100%;
+            max-width: 320px;
+            cursor: pointer;
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--tg-theme-secondary-bg-color, #16213e);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .video:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        .video-thumbnail {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            overflow: hidden;
+            background: #000;
+        }
+        .video-thumbnail img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-duration {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .video-info {
+            padding: 12px;
+        }
+        .video-title {
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .video-channel {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        #player-container {
+            display: none;
+            width: 100%;
+        }
+        #player {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border: none;
+            border-radius: 12px;
+            background: #000;
+        }
+        .back-btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 16px;
+            background: var(--tg-theme-secondary-bg-color, #16213e);
+            color: var(--tg-theme-text-color, #eee);
+            border: 2px solid var(--tg-theme-button-color, #ff6b6b);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .back-btn:hover {
+            background: var(--tg-theme-button-color, #ff6b6b);
+            color: white;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 16px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        .error {
+            text-align: center;
+            padding: 40px;
+            font-size: 14px;
+            color: #ff6b6b;
+        }
+        .source-selector {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .source-btn {
+            padding: 8px 16px;
+            background: var(--tg-theme-secondary-bg-color, #16213e);
+            color: var(--tg-theme-text-color, #eee);
+            border: 1px solid var(--tg-theme-hint-color, #333);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .source-btn.active {
+            background: var(--tg-theme-button-color, #ff6b6b);
+            border-color: var(--tg-theme-button-color, #ff6b6b);
+        }
+        .source-btn:hover {
+            opacity: 0.8;
         }
     </style>
 </head>
 <body>
-    <button class="back-btn" onclick="backToSearch()" style="display:none;">🔍 Новый поиск</button>
-    
-    <h1>📺 YouTube в Telegram</h1>
-    <input id="search" placeholder="Введите название видео или ссылку YouTube..." />
-    
-    <div id="results" style="display:none;"></div>
-    <iframe id="player" allowfullscreen></iframe>
+    <div class="header">
+        <h1>📺 YouTube Mini App</h1>
+        <div class="subtitle">Смотрите видео без VPN</div>
+    </div>
+
+    <div id="search-section">
+        <div class="source-selector" id="source-selector">
+            <button class="source-btn active" data-source="invidious">Invidious</button>
+            <button class="source-btn" data-source="piped">Piped</button>
+            <button class="source-btn" data-source="youtube">YouTube</button>
+        </div>
+
+        <div id="search-container">
+            <input id="search" placeholder="Поиск видео или вставьте ссылку YouTube..." />
+            <button class="search-btn" id="search-btn" onclick="performSearch()">🔍 Найти</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <div id="player-container">
+        <iframe id="player" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+        <button class="back-btn" onclick="backToSearch()">🔍 Вернуться к поиску</button>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready(); tg.expand();
-        tg.MainButton.setText('Открыть в Telegram').hide();
+        tg.ready();
+        tg.expand();
 
+        // Конфигурация источников (альтернативные фронтенды для YouTube)
+        const SOURCES = {
+            invidious: {
+                search: (q) => `https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(q)}`,
+                embed: (id) => `https://inv.tux.pizza/embed/${id}`,
+                thumbnail: (id) => `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+                parseResponse: (data) => data.map(item => ({
+                    id: item.videoId || item.videoId,
+                    title: item.title,
+                    channel: item.author,
+                    thumbnail: item.videoThumbnails?.[4]?.url || `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`,
+                    duration: item.lengthSeconds
+                }))
+            },
+            piped: {
+                search: (q) => `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(q)}&filter=all`,
+                embed: (id) => `https://piped.video/embed/${id}`,
+                thumbnail: (id) => `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+                parseResponse: (data) => data.items.map(item => ({
+                    id: item.url.split('/watch?v=')[1],
+                    title: item.title,
+                    channel: item.uploaderName,
+                    thumbnail: item.thumbnail,
+                    duration: item.duration
+                }))
+            },
+            youtube: {
+                search: (q) => `https://yt.lemnoslife.com/videos?part=snippet&id=${encodeURIComponent(q)}`,
+                embed: (id) => `https://www.youtube.com/embed/${id}`,
+                thumbnail: (id) => `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+                parseResponse: (data) => []
+            }
+        };
+
+        let currentSource = 'invidious';
         const searchEl = document.getElementById('search');
         const resultsEl = document.getElementById('results');
         const playerEl = document.getElementById('player');
-        const backBtn = document.querySelector('.back-btn');
+        const playerContainer = document.getElementById('player-container');
+        const searchSection = document.getElementById('search-section');
+        const searchBtn = document.getElementById('search-btn');
 
-        searchEl.addEventListener('keypress', handleSearch);
+        // Обработчики выбора источника
+        document.querySelectorAll('.source-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSource = btn.dataset.source;
+            });
+        });
+
+        // Поиск по Enter
+        searchEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
         searchEl.focus();
 
-        async function handleSearch(e) {
-            if (e.key === 'Enter') {
-                const query = searchEl.value.trim();
-                if (!query) return;
-                
-                searchEl.disabled = true;
-                resultsEl.innerHTML = '<div style="text-align:center;padding:40px">🔍 Поиск...</div>';
-                resultsEl.style.display = 'block';
-                
-                try {
-                    // Используем публичный прокси Invidious для России
-                    const res = await fetch(`https://search.yt-dlp.top/search?q=${encodeURIComponent(query)}`);
-                    const data = await res.json();
-                    
-                    if (data.videos && data.videos.length) {
-                        showResults(data.videos);
-                    } else {
-                        resultsEl.innerHTML = '<div style="text-align:center;padding:40px">❌ Видео не найдены</div>';
-                    }
-                } catch(e) {
-                    resultsEl.innerHTML = '<div style="text-align:center;padding:40px">⚠️ Ошибка поиска. Попробуйте другое название</div>';
+        async function performSearch() {
+            const query = searchEl.value.trim();
+            if (!query) return;
+
+            // Проверка, является ли ввод ссылкой на YouTube
+            const youtubeId = extractYouTubeId(query);
+            const searchQuery = youtubeId || query;
+
+            searchEl.disabled = true;
+            searchBtn.disabled = true;
+            resultsEl.style.display = 'block';
+            resultsEl.innerHTML = '<div class="loading">🔍 Поиск видео...</div>';
+
+            try {
+                if (youtubeId) {
+                    // Если это прямая ссылка, сразу воспроизводим видео
+                    playVideo(youtubeId);
+                } else {
+                    // Иначе выполняем поиск
+                    await searchVideos(searchQuery);
                 }
+            } catch (error) {
+                console.error('Search error:', error);
+                resultsEl.innerHTML = '<div class="error">⚠️ Ошибка поиска. Попробуйте другой источник или запрос.</div>';
+            } finally {
                 searchEl.disabled = false;
+                searchBtn.disabled = false;
+                searchEl.focus();
             }
         }
 
-        function showResults(videos) {
+        async function searchVideos(query) {
+            const source = SOURCES[currentSource];
+
+            try {
+                const response = await fetch(source.search(query));
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const videos = source.parseResponse(data);
+
+                if (videos && videos.length > 0) {
+                    displayResults(videos.slice(0, 12));
+                } else {
+                    resultsEl.innerHTML = '<div class="error">❌ Видео не найдены. Попробуйте другой источник.</div>';
+                }
+            } catch (error) {
+                console.error('API Error:', error);
+                resultsEl.innerHTML = '<div class="error">⚠️ Ошибка подключения к источнику. Попробуйте переключить источник выше.</div>';
+            }
+        }
+
+        function displayResults(videos) {
             resultsEl.innerHTML = '';
-            videos.slice(0, 10).forEach(video => {
+            videos.forEach(video => {
+                if (!video.id) return;
+
                 const div = document.createElement('div');
                 div.className = 'video';
                 div.innerHTML = `
-                    <img src="${video.thumbnail}" loading="lazy">
-                    <div class="video-title">${video.title}</div>
+                    <div class="video-thumbnail">
+                        <img src="${video.thumbnail}" loading="lazy" alt="${video.title}">
+                        ${video.duration ? `<span class="video-duration">${formatDuration(video.duration)}</span>` : ''}
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">${video.title}</div>
+                        <div class="video-channel">${video.channel || 'Unknown'}</div>
+                    </div>
                 `;
                 div.onclick = () => playVideo(video.id);
                 resultsEl.appendChild(div);
@@ -95,22 +362,48 @@
         }
 
         function playVideo(id) {
-            playerEl.src = `https://yewtu.be/embed/${id}?autoplay=1&rel=0`;
-            playerEl.style.display = 'block';
-            resultsEl.style.display = 'none';
-            searchEl.style.display = 'none';
-            backBtn.style.display = 'block';
-            tg.MainButton.setText('📺 Ещё видео').show();
+            const source = SOURCES[currentSource];
+            playerEl.src = source.embed(id);
+            playerContainer.style.display = 'block';
+            searchSection.style.display = 'none';
         }
 
         function backToSearch() {
-            playerEl.style.display = 'none';
+            playerEl.src = '';
+            playerContainer.style.display = 'none';
+            searchSection.style.display = 'block';
+            searchEl.value = '';
+            searchEl.focus();
             resultsEl.style.display = 'none';
-            searchEl.style.display = 'block';
-            searchEl.value = ''; searchEl.focus();
-            backBtn.style.display = 'none';
-            tg.MainButton.hide();
         }
+
+        function extractYouTubeId(input) {
+            // Поддержка различных форматов ссылок YouTube
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+                /^[a-zA-Z0-9_-]{11}$/ // Прямой ID видео
+            ];
+
+            for (const pattern of patterns) {
+                const match = input.match(pattern);
+                if (match) return match[1];
+            }
+            return null;
+        }
+
+        function formatDuration(seconds) {
+            if (!seconds) return '';
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Сохраняем состояние при сворачивании
+        Telegram.WebApp.onEvent('viewportChanged', () => {
+            if (!Telegram.WebApp.isExpanded) {
+                Telegram.WebApp.expand();
+            }
+        });
     </script>
 </body>
 </html>
